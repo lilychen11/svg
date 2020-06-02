@@ -1,31 +1,125 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta charset="utf-8"/>
-        <title>Line drawing</title>
-        <link rel="stylesheet" href="../pagestyle.css">
-        <script src="http://d3js.org/d3.v4.min.js"></script>
-    </head>
-    <body>
-        <header>
-            <h1>Line drawing</h1>
-        </header>
-        <p>
-            This is a tutorial about line drawing and line of sight on grids.
-        </p>
-        <div id="demo">
-            <svg viewBox="0 0 550 220" style="background:white"></svg>
-        </div>
-        <script src="line-drawing.js"></script>
-        <footer xmlns:dct="http://purl.org/dc/terms" xmlns:vcard="http://www.w3.org/2001/vdard-rdf/3.0#">
-            <a rel="license"
-                style="float:left;width:100px;margin-right:1em"
-                href="http://creativecommons.org/publicdomain/zero/1.0/">
-                <img src="http://i.creativecommons.org/p/zero/1.0/88x31.png" style="border-style:none;" alt="CC0"/>
-            </a>
-            This page is in the <a href="https://creativecommons.org/publicdomain/zero/1.0/">public domain</a>.
-            Use it as you wish. Attribution is not necessary, but appreciated.
 
-        </footer>
-    </body>
+<head>
+    <meta charset="utf-8" />
+    <title>Line drawing</title>
+    <link rel="stylesheet" href="../pagestyle.css">
+    <script src="http://d3js.org/d3.v4.min.js"></script>
+    <style>
+        svg { pointer-events: none; }
+        text { font-size: 10px; }
+        g.grid rect { fill: hsl(0,10%,85%); stroke: hsl(60,10%,95%); }
+        g.track line { fill: none; stroke: white; stroke-opacity: 0.5; stroke-width: 15px; }
+        g.interpolated circle { fill: hsl(0,100%,20%); stroke: white; stroke-width: 0.5px; }
+        g.rounded rect { fill: hsl(0,30%,50%); fill-opacity: 0.3; stroke: hsl(0,30%,50%); stroke-width: 0.7px; }
+        g.handles circle { pointer-events: all; }
+        g.handles circle.visible { fill: hsl(0,50%,50%); stroke: white; stroke-width: 1px; stroke-opacity: 1.0; }
+        g.handles circle.invisible { fill-opacity: 0.0; }
+        span[data-name] {
+            display: inline-block;
+            width: 5ch;
+            padding: 4px 6px;
+            text-align: center;
+            line-height: 1.5;
+            background-color: hsla(60,50%,97%,0.8);
+            box-shadow: 0 0 4px hsla(0,0%,0%,0.3); 
+            border-radius: 4px;
+            border: none;
+            transition: background-color 0.15s, box-shadow 0.15s; 
+        }
+        span[data-name]:hover { 
+            box-shadow: 0 0 4px hsla(0,50%,50%,1.0); 
+        }
+        .draggable:hover {
+            filter: url(#drop-shadow);
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Line drawing</h1>
+    </header>
+    <p>
+        This is a tutorial about line drawing and line of sight on grids.
+    </p>
+    <div id="demo">
+        <svg viewBox="0 0 550 220" style="background:white"></svg>
+    </div>
+    <h2>Linear interpolation: numbers</h2>
+    <p>
+        Let's look at <u>l</u>inear int<u>erp</u>olation, or <em>lerp</em>, for numbers:
+    </p>
+    <div id="linear-interpolation">
+        <pre>
+      lerp(  0,   1, <span data-name="t"></span>) = <span id="lerp1"></span>
+      lerp(  0, 100, <span data-name="t"></span>) = <span id="lerp2"></span>
+      lerp(  3,   5, <span data-name="t"></span>) = <span id="lerp3"></span>
+      lerp(  5,   3, <span data-name="t"></span>) = <span id="lerp4"></span>
+            </pre>
+    </div>
+    <h2>Linear interpolation: points</h2>
+    <p>
+      Let's look at linear interpolation for points. We can separately
+      linearly interpolate the x and y values, and it behaves as we
+      might expect:
+    </p>
+    <div id="interpolate-t">
+        <svg viewBox="0 0 550 220">
+        </svg>
+        <p>
+          Try varying t = <span data-name="t"></span>.
+        </p>
+      </div>
+      <h2>Number of points</h2>
+    <p>
+      Instead of picking 1 interpolation point, let's pick N of them:
+    </p>
+    <div id="interpolate-N">
+      <svg viewBox="0 0 550 220">
+      </svg>
+      <p>
+        Try varying N = <span data-name="N"></span>.
+      </p>
+    </div>
+    <h2>Snap to grid</h2>
+    <p>
+      Now let's round each of those N points to the closest grid square:
+    </p>
+    <div id="snap-to-grid">
+      <svg viewBox="0 0 550 220">
+      </svg>
+      <p>
+        Try varying N = <span data-name="N"></span> until it reaches
+        the optimal value of <b class="optimal-N"></b> = max(Δx,Δy).
+      </p>
+    </div>
+    <!-- this svg stores the shared defs used by other svgs on the page -->
+    <svg class="shared-defs" width="1" height="1">
+      <defs>
+        <filter id="drop-shadow" x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+          <feOffset dy="1" result="offsetblur"/>
+          <feFlood flood-color="#000000"/>
+          <feComposite in2="offsetblur" operator="in"/>
+          <feMerge>
+            <feMergeNode/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+    </svg>
+    <script src="line-drawing.js"></script>
+    <footer xmlns:dct="http://purl.org/dc/terms" xmlns:vcard="http://www.w3.org/2001/vdard-rdf/3.0#">
+        <a rel="license" style="float:left;width:100px;margin-right:1em"
+            href="http://creativecommons.org/publicdomain/zero/1.0/">
+            <img src="http://i.creativecommons.org/p/zero/1.0/88x31.png" style="border-style:none;" alt="CC0" />
+        </a>
+        This page is in the <a href="https://creativecommons.org/publicdomain/zero/1.0/">public domain</a>.
+        Use it as you wish. Attribution is not necessary, but appreciated.
+
+    </footer>
+</body>
+
 </html>
