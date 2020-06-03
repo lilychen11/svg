@@ -1,5 +1,35 @@
 const scale = 22;
 
+function calPath(m, start, end){
+    queue=[];
+
+}
+
+function genMap(width, height) {
+    let m = [];
+    for (let i = 0; i < width; i++) {
+        let row = []
+        for (let j = 0; j < height; j++) {
+            let ran = Math.floor(10 * Math.random());
+            let v = ran > 8 ? 1 : 0
+            row.push(v);
+        }
+        m.push(row);
+    }
+    return m;
+}
+function getObstacles(m) {
+    let points = [];
+    for (let i = 0; i < m.length; i++) {
+        for (let j = 0; j < m[0].length; j++) {
+            if (m[i][j] > 0) {
+                points.push({ x: i, y: j })
+            }
+        }
+    }
+    return points;
+}
+
 function clamp(x, lo, hi) {
     if (x < lo) {
         x = lo;
@@ -33,12 +63,14 @@ function roundPoint(P) {
 function lineDistance(A, B) {
     return Math.max(Math.abs(A.x - B.x), Math.abs(A.y - B.y));
 }
+function dataFilter(P) { }
 
 class Diagram {
-    constructor(containerId) {
+    constructor(containerId, wi, hi) {
         this.root = d3.select(`#${containerId}`);
         this.A = { x: 2, y: 2 };
         this.B = { x: 20, y: 8 };
+        this.m = genMap(wi,hi);
         this.parent = this.root.select("svg");
         this._updateFunctions = [];
     }
@@ -48,17 +80,17 @@ class Diagram {
         this.update();
     }
     update() {
-        this._updateFunctions.forEach((f) => f())
+        this._updateFunctions.forEach((f) => f());
     }
 
     addGrid() {
         let g = this.parent.append('g').attr('class', "grid");
-        for (let x = 0; x < 25; x++) {
-            for (let y = 0; y < 10; y++) {
+        for (let x = 0; x < this.m.length; x++) {
+            for (let y = 0; y < this.m[0].length; y++) {
                 g.append('rect')
                     .attr('transform', `translate(${x * scale},${y * scale})`)
                     .attr('width', scale)
-                    .attr('height', scale)
+                    .attr('height', scale);
             }
         }
         return this;
@@ -120,9 +152,9 @@ class Diagram {
                 ? { x: 0.8 * scale, y: 0 } : { x: 0, y: -0.8 * scale };
             let labels = g.selectAll("text").data(points);
             labels.exit().remove();
-            labels.enter.append('text')
+            labels.enter().append('text')
                 .attr('text-anchor', 'middle')
-                .text((p, i)=>i)
+                .text((p, i) => i)
                 .merge(labels)
                 .attr('transform',
                     (p) => `translate(${p.x * scale}, ${p.y * scale})
@@ -136,7 +168,7 @@ class Diagram {
         this.onUpdate(() => {
             let N = this.N == null ? lineDistance(this.A, this.B) : this.N;
             let points = interpolationPoints(this.A, this.B, N).map(roundPoint);
-            let squares = g.selectAll("rect").data(points)
+            let squares = g.selectAll("rect").data(points);
             squares.exit().remove();
             squares.enter().append('rect')
                 .attr('width', scale)
@@ -153,40 +185,55 @@ class Diagram {
         this.makeDraggableCircle(g, this.B);
         return this;
     }
-/* 
-    update() {
-        let rects = this.gPoints.selectAll('rect')
-            .data(pointsOnLine(this.A, this.B));
-        rects.exit().remove();
-        rects.enter().append('rect')
-            .attr('width', scale - 1)
-            .attr('height', scale - 1)
-            .attr('fill', "hsl(0, 40%, 70%)")
-            .merge(rects)
-            .attr('transform', (p) => `translate(${p.x * scale}, ${p.y * scale})`);
 
-        let t = this.t;
-        function set(id, fmt, lo, hi) {
-            d3.select(id).text(d3.format(fmt)(lerp(lo, hi, t)));
-        }
-        set("#lerp1", ".2f", 0, 1);
-        set("#lerp2", ".0f", 0, 100);
-        set("#lerp3", ".1f", 3, 5);
-        set("#lerp4", ".1f", 5, 3);
+    addRect() {
+        let g = this.parent.append('g').attr('class', 'obstacles');
+        this.onUpdate(() => {
+            let points = getObstacles(this.m);
+            let squares = g.selectAll("rect").data(points);
+            squares.exit().remove();
+            squares.enter().append('rect')
+                .attr('width', scale - 1)
+                .attr('height', scale - 1)
+                .merge(squares)
+                .attr('transform', (p) => `translate(${p.x * scale}, ${p.y * scale})`);
+        });
+        return this;
     }
-
-    drawGrid() {
-        for (let x = 0; x < 25; x++) {
-            for (let y = 0; y < 10; y++) {
-                this.gGrid.append('rect')
-                    .attr('transform', `translate(${x * scale},${y * scale})`)
-                    .attr('width', scale)
-                    .attr('height', scale)
-                    .attr('fill', "white")
-                    .attr('stroke', "gray");
+    /* 
+        update() {
+            let rects = this.gPoints.selectAll('rect')
+                .data(pointsOnLine(this.A, this.B));
+            rects.exit().remove();
+            rects.enter().append('rect')
+                .attr('width', scale - 1)
+                .attr('height', scale - 1)
+                .attr('fill', "hsl(0, 40%, 70%)")
+                .merge(rects)
+                .attr('transform', (p) => `translate(${p.x * scale}, ${p.y * scale})`);
+    
+            let t = this.t;
+            function set(id, fmt, lo, hi) {
+                d3.select(id).text(d3.format(fmt)(lerp(lo, hi, t)));
             }
+            set("#lerp1", ".2f", 0, 1);
+            set("#lerp2", ".0f", 0, 100);
+            set("#lerp3", ".1f", 3, 5);
+            set("#lerp4", ".1f", 5, 3);
         }
-    } */
+    
+        drawGrid() {
+            for (let x = 0; x < 25; x++) {
+                for (let y = 0; y < 10; y++) {
+                    this.gGrid.append('rect')
+                        .attr('transform', `translate(${x * scale},${y * scale})`)
+                        .attr('width', scale)
+                        .attr('height', scale)
+                        .attr('fill', "white")
+                        .attr('stroke', "gray");
+                }
+            }
+        } */
 
     makeDraggableCircle(parent, point) {
         let diagram = this;
@@ -205,7 +252,7 @@ class Diagram {
         }
 
         function onDrag() {
-            point.x = clamp(Math.floor(d3.event.x / scale), 0, 24);
+            point.x = clamp(Math.floor(d3.event.x / scale), 0, 29);
             point.y = clamp(Math.floor(d3.event.y / scale), 0, 9);
             updatePosition();
             diagram.update();
@@ -240,9 +287,39 @@ class Diagram {
 }
 
 
-let diagram1 = new Diagram('demo')
+/* let diagram1 = new Diagram('demo')
     .addGrid()
     .addLine()
     .addHandles();
 let diagram2 = new Diagram('linear-interpolation')
-.addLerpValues();
+    .addLerpValues();
+
+let diagram3 = new Diagram('interpolate-t')
+    .addGrid()
+    .addTrack()
+    .addInterpolated(0.5, null, 4)
+    .addHandles();
+ */
+
+let diagram4 = new Diagram('demo',30, 10)
+    .addGrid()
+    .addRect()
+    .addTrack()
+    .addInterpolated(null, 5, 2.5)
+    .addHandles()
+    .addInterpolationLabels();
+
+
+/* let diagram5 = new Diagram('snap-to-grid')
+    .addGrid()
+    .addTrack()
+    .addLine()
+    .addInterpolated(null, 5, 2.5)
+    .addHandles();
+
+diagram5.onUpdate(() => {
+    let distance = lineDistance(diagram5.A, diagram5.B);
+    diagram5.root.selectAll(".optimal-N")
+        .text(distance);
+}); */
+
