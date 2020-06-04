@@ -1,9 +1,6 @@
 const scale = 22;
 
-function calPath(m, start, end){
-    queue=[];
 
-}
 
 function genMap(width, height) {
     let m = [];
@@ -63,15 +60,19 @@ function roundPoint(P) {
 function lineDistance(A, B) {
     return Math.max(Math.abs(A.x - B.x), Math.abs(A.y - B.y));
 }
-function dataFilter(P) { }
+function eDistache(A, B) {
+    return Math.abs(A.x - B.x) + Math.abs(A.y - B.y);
+}
 
 class Diagram {
     constructor(containerId, wi, hi) {
         this.root = d3.select(`#${containerId}`);
         this.A = { x: 2, y: 2 };
         this.B = { x: 20, y: 8 };
-        this.m = genMap(wi,hi);
+        this.m = genMap(wi, hi);
         this.parent = this.root.select("svg");
+        this.vset = [];
+        this.aStarPath=[];
         this._updateFunctions = [];
     }
 
@@ -200,6 +201,105 @@ class Diagram {
         });
         return this;
     }
+    addVisitedRect() {
+        let g = this.parent.append('g').attr('class', 'visited');
+        this.onUpdate(() => {
+            let points = this.vset;
+            let squares = g.selectAll("rect").data(points);
+            squares.exit().remove();
+            squares.enter().append('rect')
+                .attr('width', scale - 3)
+                .attr('height', scale - 3)
+                .merge(squares)
+                .attr('transform', (p) => `translate(${p.x * scale}, ${p.y * scale})`);
+        });
+        return this;
+    }
+    drawPath(){
+        let g = this.parent.append('g').attr('class', 'path');
+        this.onUpdate(()=>{
+            let points = this.aStarPath;
+            let squares = g.selectAll("rect").data(points);
+            squares.exit().remove();
+            squares.enter().append('rect')
+                .attr('width', scale - 4)
+                .attr('height', scale - 4)
+                .merge(squares)
+                .attr('transform', (p) => `translate(${p.x * scale}, ${p.y * scale})`);
+        });
+       return this;
+    }
+   
+
+    addPath() {
+        this.onUpdate(()=>{
+            let start = this.A;
+            let end = this.B;
+            let m = this.m;
+            this.aStarPath=[];
+            let frontier = new PriorityQueue();
+            frontier.enqueue(start, 0);
+            let direct1 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+            let direct2 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+            let directions = direct1;
+            let visitSet = [];
+            let came_from = {};
+            let cost_so_far = {};
+            came_from[start.x + " " + start.y] = NaN;
+            cost_so_far[start.x + " " + start.y] = 0;
+            let find = false;
+            while (!frontier.isEmpty()) {
+                let current = frontier.dequeue().element;
+                if (current.x == end.x && current.y == end.y|| m[current.x][current.y]>0||m[end.x][end.y]>0) {
+                    break;
+                }
+    
+                for (let i = 0; i < directions.length; i++) {
+                    let direction = directions[i];
+                    let cost = 10;
+                    if (direction[0] != 0 && direction[1] != 0) {
+                        cost = 14;
+                    }
+                    let x = current.x + direction[0];
+                    let y = current.y + direction[1];
+                    let cur = { x: x, y: y };
+                    if (x < 0 || y < 0 || x >= m.length || y >= m[0].length || m[x][y] > 0) {
+                        continue;
+                    }
+    
+                    let new_cost = cost_so_far[current.x + " " + current.y] + cost;
+                    if (!cost_so_far.hasOwnProperty(cur.x + " " + cur.y) || cost_so_far[cur.x + " " + cur.y] > new_cost) {
+                        cost_so_far[cur.x + " " + cur.y] = new_cost;
+                        let expect = eDistache(cur, end) * 10
+                        frontier.enqueue(cur, new_cost + expect);
+                        came_from[cur.x + " " + cur.y] = current;
+                        if (!visitSet.hasOwnProperty(cur.x + " " + cur.y)) {
+                            visitSet.push({ x: x, y: y })
+                        }
+                        if (cur.x == this.B.x && cur.y == this.B.y) {
+                            find = true;
+                            let temp = cur;
+                          
+                            while(temp.x != start.x || temp.y != start.y){
+                                this.aStarPath.push(temp);
+                                temp=came_from[temp.x+" "+ temp.y];
+                            }
+                            break;
+                        }
+    
+                    }
+                }
+                
+                if (find) {
+                    break;
+                }
+    
+            }
+            this.vset = visitSet;
+            // this.aStarPath = path;
+        });
+       return this;
+    };
     /* 
         update() {
             let rects = this.gPoints.selectAll('rect')
@@ -286,6 +386,51 @@ class Diagram {
 
 }
 
+function PriorityQueue() {
+    let items = [];
+    function QueueElement(element, priority) {
+        this.element = element;
+        this.priority = priority;
+    }
+    this.enqueue = function (element, priority) {
+        let qe = new QueueElement(element, -Math.abs(priority));
+        let added = false;
+        for (let i = 0; i < items.length; i++) {
+            if (qe.priority > items[i].priority) {
+                items.splice(i, 0, qe);
+                added = true;
+                break;
+            }
+        }
+        if (!added) {
+            items.push(qe);
+        }
+    }
+    this.dequeue = () => {
+        return items.shift();
+    }
+    this.front = () => {
+        return items[0];
+    }
+    this.rear = () => {
+        return items[items.length - 1];
+    }
+    this.isEmpty = () => {
+        return items.length == 0;
+    }
+    this.size = () => { return items.length; }
+    this.print = function () {
+        for (let i = 0; i < items.length; i++) {
+            console.log(`${items[i].element} - ${items[i].priority}`);
+        }
+    }
+}
+
+function sleep(d) {
+    let n = Date.now();
+    while (Date.now() < n + d);
+}
+
 
 /* let diagram1 = new Diagram('demo')
     .addGrid()
@@ -301,14 +446,16 @@ let diagram3 = new Diagram('interpolate-t')
     .addHandles();
  */
 
-let diagram4 = new Diagram('demo',30, 10)
+let diagram4 = new Diagram('demo', 30, 10)
     .addGrid()
+    .addPath()
+    .addVisitedRect()
     .addRect()
+    .drawPath()
     .addTrack()
     .addInterpolated(null, 5, 2.5)
     .addHandles()
     .addInterpolationLabels();
-
 
 /* let diagram5 = new Diagram('snap-to-grid')
     .addGrid()
